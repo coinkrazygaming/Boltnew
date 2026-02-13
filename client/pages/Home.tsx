@@ -24,7 +24,7 @@ export default function Home() {
             </a>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/ide">
+            <Link to="/auth">
               <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 Launch IDE
                 <ArrowRight size={16} className="ml-2" />
@@ -56,7 +56,7 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Link to="/ide">
+            <Link to="/auth">
               <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 Start Building
                 <ArrowRight size={18} className="ml-2" />
@@ -220,7 +220,7 @@ export default function Home() {
           <p className="text-lg text-muted-foreground">
             Join developers who are building the future of web development
           </p>
-          <Link to="/ide">
+          <Link to="/auth">
             <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
               Launch IDE Now
               <ArrowRight size={18} className="ml-2" />
