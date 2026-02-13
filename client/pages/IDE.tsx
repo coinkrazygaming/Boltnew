@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ChevronDown, File, Folder, Plus, Settings, Terminal, Zap } from "lucide-react";
-import { ResizableHandle, ResizablePanelGroup, ResizablePanel } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -72,17 +71,12 @@ export default function IDE() {
     { id: "app-tsx", name: "App.tsx", language: "typescript" },
   ]);
   const [activeTab, setActiveTab] = useState("app-tsx");
-  const [terminalOutput, setTerminalOutput] = useState([
+  const [terminalOutput] = useState([
     "$ npm run dev",
     "Port 5173 ready in 234ms",
     "➜  Local:   http://localhost:5173/",
     "➜  press h to show help",
   ]);
-
-  const toggleFolder = (nodeId: string) => {
-    // In a real app, this would update state
-    console.log("Toggle folder:", nodeId);
-  };
 
   const openFile = (node: FileNode) => {
     if (node.type === "file") {
@@ -106,14 +100,8 @@ export default function IDE() {
       <div key={node.id}>
         {node.type === "folder" ? (
           <>
-            <div
-              className="flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-sidebar-accent text-sm text-sidebar-foreground rounded"
-              onClick={() => toggleFolder(node.id)}
-            >
-              <ChevronDown
-                size={16}
-                className={cn("transition-transform", !node.expanded && "-rotate-90")}
-              />
+            <div className="flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-sidebar-accent text-sm text-sidebar-foreground rounded">
+              <ChevronDown size={16} className="transition-transform" />
               <Folder size={16} className="text-blue-400" />
               <span>{node.name}</span>
             </div>
@@ -156,88 +144,83 @@ export default function IDE() {
         </div>
       </header>
 
-      {/* Main editor area with resizable panels */}
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        {/* File Explorer */}
-        <ResizablePanel defaultSize={20} minSize={15} maxSize={40}>
-          <div className="flex flex-col h-full bg-sidebar-background border-r border-border">
-            {/* Explorer Header */}
-            <div className="px-4 py-3 border-b border-sidebar-border flex items-center justify-between">
-              <h2 className="text-xs font-semibold text-sidebar-foreground uppercase tracking-wider">
-                Explorer
-              </h2>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                <Plus size={14} className="text-sidebar-foreground" />
-              </Button>
-            </div>
+      {/* Main content area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* File Explorer Sidebar */}
+        <div className="w-64 border-r border-border bg-sidebar-background flex flex-col">
+          {/* Explorer Header */}
+          <div className="px-4 py-3 border-b border-sidebar-border flex items-center justify-between">
+            <h2 className="text-xs font-semibold text-sidebar-foreground uppercase tracking-wider">
+              Explorer
+            </h2>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Plus size={14} className="text-sidebar-foreground" />
+            </Button>
+          </div>
 
-            {/* File Tree */}
-            <div className="flex-1 overflow-y-auto p-2">
-              {renderFileTree(mockProjectStructure)}
+          {/* File Tree */}
+          <div className="flex-1 overflow-y-auto p-2">
+            {renderFileTree(mockProjectStructure)}
+          </div>
+        </div>
+
+        {/* Editor and Preview Section */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Tabs */}
+          <div className="border-b border-border bg-card">
+            <div className="flex items-center overflow-x-auto">
+              {openTabs.map((tab) => (
+                <div
+                  key={tab.id}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 text-sm border-r border-border cursor-pointer group",
+                    activeTab === tab.id
+                      ? "bg-background text-foreground border-b-2 border-b-accent"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  )}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  <File size={14} />
+                  <span>{tab.name}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeTab(tab.id);
+                    }}
+                    className="ml-1 rounded hover:bg-muted p-0.5 opacity-0 group-hover:opacity-100 transition"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
-        </ResizablePanel>
 
-        <ResizableHandle withHandle />
-
-        {/* Code Editor and Preview */}
-        <ResizablePanel defaultSize={80} minSize={50}>
-          <div className="flex flex-col h-full">
-            {/* Tabs */}
-            <div className="border-b border-border bg-card">
-              <div className="flex items-center overflow-x-auto">
-                {openTabs.map((tab) => (
-                  <div
-                    key={tab.id}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-2 text-sm border-r border-border cursor-pointer group",
-                      activeTab === tab.id
-                        ? "bg-background text-foreground border-b-2 border-b-accent"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                    )}
-                    onClick={() => setActiveTab(tab.id)}
-                  >
-                    <File size={14} />
-                    <span>{tab.name}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        closeTab(tab.id);
-                      }}
-                      className="ml-1 rounded hover:bg-muted p-0.5 opacity-0 group-hover:opacity-100 transition"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+          {/* Editor and Preview Grid */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Code Editor */}
+            <div className="flex-1 overflow-hidden bg-background border-r border-border">
+              <div className="p-4 font-mono text-sm text-slate-300 whitespace-pre-wrap overflow-auto h-full">
+                <code>{sampleCode}</code>
               </div>
             </div>
 
-            {/* Main content area - editor and preview split */}
-            <div className="flex-1 flex overflow-hidden">
-              {/* Editor */}
-              <div className="flex-1 overflow-hidden bg-background border-r border-border">
-                <div className="p-4 font-mono text-sm text-foreground whitespace-pre-wrap overflow-auto h-full">
-                  <code className="text-slate-300">{sampleCode}</code>
-                </div>
-              </div>
+            {/* Preview/Terminal Panel */}
+            <div className="w-1/2 flex flex-col bg-card border-l border-border">
+              <Tabs defaultValue="preview" className="flex flex-col h-full">
+                <TabsList className="rounded-none border-b border-border bg-background">
+                  <TabsTrigger value="preview" className="rounded-none">
+                    Preview
+                  </TabsTrigger>
+                  <TabsTrigger value="terminal" className="rounded-none flex items-center gap-2">
+                    <Terminal size={14} />
+                    Terminal
+                  </TabsTrigger>
+                </TabsList>
 
-              {/* Preview/Terminal Area */}
-              <div className="w-1/2">
-                <Tabs defaultValue="preview" className="flex flex-col h-full bg-card">
-                  <TabsList className="rounded-none border-b border-border bg-background">
-                    <TabsTrigger value="preview" className="rounded-none">
-                      Preview
-                    </TabsTrigger>
-                    <TabsTrigger value="terminal" className="rounded-none flex items-center gap-2">
-                      <Terminal size={14} />
-                      Terminal
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="preview" className="flex-1 overflow-hidden">
-                    <iframe
-                      srcDoc={`<!DOCTYPE html>
+                <TabsContent value="preview" className="flex-1 overflow-hidden">
+                  <iframe
+                    srcDoc={`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -256,26 +239,25 @@ export default function IDE() {
   </div>
 </body>
 </html>`}
-                      className="w-full h-full border-0"
-                    />
-                  </TabsContent>
+                    className="w-full h-full border-0"
+                  />
+                </TabsContent>
 
-                  <TabsContent value="terminal" className="flex-1 overflow-auto p-4 font-mono text-xs">
-                    <div className="space-y-1">
-                      {terminalOutput.map((line, idx) => (
-                        <div key={idx} className="text-slate-400">
-                          <span>{line}</span>
-                        </div>
-                      ))}
-                      <div className="text-slate-500">$ _</div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
+                <TabsContent value="terminal" className="flex-1 overflow-auto p-4 font-mono text-xs">
+                  <div className="space-y-1">
+                    {terminalOutput.map((line, idx) => (
+                      <div key={idx} className="text-slate-400">
+                        <span>{line}</span>
+                      </div>
+                    ))}
+                    <div className="text-slate-500">$ _</div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+        </div>
+      </div>
     </div>
   );
 }

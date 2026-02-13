@@ -80,3 +80,16 @@ export async function getCurrentUser() {
 
   return user;
 }
+
+// Export isConfigured from ENV
+export const isConfigured = {
+  get supabase() {
+    return !!ENV.SUPABASE_URL && !!ENV.SUPABASE_ANON_KEY;
+  },
+  get openai() {
+    return !!ENV.OPENAI_API_KEY;
+  },
+  get webcontainer() {
+    return !!ENV.WEBCONTAINER_TOKEN;
+  },
+};
