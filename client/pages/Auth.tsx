@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Zap, Github, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/appStore";
-import { signUpWithEmail, signInWithEmail, signInWithGitHub, isConfigured } from "@/lib/supabase";
+import { signUpWithEmail, signInWithEmail, signInWithGitHub, isConfigured, getCurrentUser } from "@/lib/supabase";
 import { toast } from "sonner";
 
 type AuthMode = "signin" | "signup";
@@ -14,9 +14,54 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const setUserId = useAppStore((state) => state.setUserId);
+  const setCurrentUser = useAppStore((state) => state.setCurrentUser);
   const setIsAuthenticated = useAppStore((state) => state.setIsAuthenticated);
+  const setOrganizations = useAppStore((state) => state.setOrganizations);
+
+  // Check if user is already authenticated
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          setUserId(user.id);
+          setCurrentUser({
+            id: user.id,
+            email: user.email || "",
+            name: user.user_metadata?.name || user.email?.split("@")[0] || "",
+            avatar_url: user.user_metadata?.avatar_url,
+            github_id: user.user_metadata?.provider_id,
+          });
+          setIsAuthenticated(true);
+
+          // Fetch organizations
+          try {
+            const response = await fetch("/api/organizations", {
+              headers: {
+                Authorization: `Bearer ${user.id}`,
+              },
+            });
+            if (response.ok) {
+              const orgs = await response.json();
+              setOrganizations(orgs);
+            }
+          } catch (error) {
+            console.error("Error fetching organizations:", error);
+          }
+
+          navigate("/");
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [navigate, setUserId, setCurrentUser, setIsAuthenticated, setOrganizations]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,9 +89,31 @@ export default function Auth() {
         const { session } = await signInWithEmail(email, password);
         if (session?.user.id) {
           setUserId(session.user.id);
+          setCurrentUser({
+            id: session.user.id,
+            email: session.user.email || "",
+            name: session.user.user_metadata?.name || email.split("@")[0] || "",
+            avatar_url: session.user.user_metadata?.avatar_url,
+          });
           setIsAuthenticated(true);
+
+          // Fetch organizations
+          try {
+            const response = await fetch("/api/organizations", {
+              headers: {
+                Authorization: `Bearer ${session.user.id}`,
+              },
+            });
+            if (response.ok) {
+              const orgs = await response.json();
+              setOrganizations(orgs);
+            }
+          } catch (error) {
+            console.error("Error fetching organizations:", error);
+          }
+
           toast.success("Signed in successfully!");
-          navigate("/ide");
+          navigate("/");
         }
       }
     } catch (error: any) {
@@ -75,8 +142,24 @@ export default function Auth() {
   const handleDemoMode = () => {
     setIsAuthenticated(true);
     setUserId("demo-user");
-    navigate("/ide");
+    setCurrentUser({
+      id: "demo-user",
+      email: "demo@example.com",
+      name: "Demo User",
+    });
+    navigate("/");
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-secondary flex items-center justify-center px-4">
+        <div className="text-center">
+          <Zap className="text-accent animate-spin mx-auto mb-4" size={32} />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary flex items-center justify-center px-4">

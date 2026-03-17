@@ -1,8 +1,19 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { ArrowRight, Code, Zap, Globe, Sparkles, Github, Twitter, Linkedin } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAppStore } from "@/store/appStore";
 
 export default function Home() {
+  const navigate = useNavigate();
+  const isAuthenticated = useAppStore((state) => state.isAuthenticated);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-secondary">
       {/* Navigation */}
