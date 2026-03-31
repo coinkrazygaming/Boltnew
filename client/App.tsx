@@ -16,7 +16,6 @@ import IDEAdvanced from "./pages/IDEAdvanced";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import { useNavigate } from "react-router-dom";
 
 // Initialize Supabase on app load
 initializeSupabase();
