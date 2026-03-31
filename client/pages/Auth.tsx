@@ -36,6 +36,12 @@ export default function Auth() {
           });
           setIsAuthenticated(true);
 
+          // Store in localStorage
+          localStorage.setItem("bolt_auth", JSON.stringify({
+            userId: user.id,
+            isAuthenticated: true,
+          }));
+
           // Fetch organizations
           try {
             const response = await fetch("/api/organizations", {
@@ -70,6 +76,10 @@ export default function Auth() {
       toast.error("Authentication is not configured. Using demo mode.");
       setIsAuthenticated(true);
       setUserId("demo-user");
+      localStorage.setItem("bolt_auth", JSON.stringify({
+        userId: "demo-user",
+        isAuthenticated: true,
+      }));
       navigate("/ide");
       return;
     }
@@ -96,6 +106,12 @@ export default function Auth() {
             avatar_url: session.user.user_metadata?.avatar_url,
           });
           setIsAuthenticated(true);
+
+          // Store in localStorage
+          localStorage.setItem("bolt_auth", JSON.stringify({
+            userId: session.user.id,
+            isAuthenticated: true,
+          }));
 
           // Fetch organizations
           try {
@@ -147,6 +163,13 @@ export default function Auth() {
       email: "demo@example.com",
       name: "Demo User",
     });
+
+    // Store in localStorage
+    localStorage.setItem("bolt_auth", JSON.stringify({
+      userId: "demo-user",
+      isAuthenticated: true,
+    }));
+
     navigate("/");
   };
 

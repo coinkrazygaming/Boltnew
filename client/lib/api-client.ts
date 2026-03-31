@@ -7,7 +7,15 @@ async function getAuthToken(): Promise<string | null> {
   try {
     const { getSupabase } = await import("./supabase");
     const client = getSupabase();
-    if (!client) return null;
+    if (!client) {
+      // Supabase not configured, fall back to stored userId (demo mode)
+      const storedAuth = localStorage.getItem("bolt_auth");
+      if (storedAuth) {
+        const { userId } = JSON.parse(storedAuth);
+        return userId || null;
+      }
+      return null;
+    }
 
     const {
       data: { session },
@@ -15,6 +23,12 @@ async function getAuthToken(): Promise<string | null> {
     return session?.access_token || null;
   } catch (error) {
     console.error("Error getting auth token:", error);
+    // Fall back to stored userId (demo mode)
+    const storedAuth = localStorage.getItem("bolt_auth");
+    if (storedAuth) {
+      const { userId } = JSON.parse(storedAuth);
+      return userId || null;
+    }
     return null;
   }
 }
