@@ -22,18 +22,14 @@ export async function initializeWebContainer(): Promise<WebContainer> {
   } catch (error) {
     console.error("Failed to initialize WebContainer:", error);
     initPromise = null;
-    throw new Error("WebContainer initialization failed. Check browser compatibility.");
+    // Return null instead of throwing to allow graceful degradation
+    return null as any;
   }
 }
 
 export async function getWebContainer(): Promise<WebContainer | null> {
   if (!webcontainerInstance && !initPromise) {
-    try {
-      await initializeWebContainer();
-    } catch (error) {
-      console.error("Failed to get WebContainer:", error);
-      return null;
-    }
+    await initializeWebContainer();
   }
   return webcontainerInstance;
 }
@@ -104,9 +100,12 @@ export async function executeCommand(
 ): Promise<{
   exitCode: number;
   output: string;
-}> {
+} | null> {
   const container = await getWebContainer();
-  if (!container) throw new Error("WebContainer not initialized");
+  if (!container) {
+    console.warn("WebContainer not available - this feature requires cross-origin isolation headers");
+    return null;
+  }
 
   const process = await container.spawn("sh", ["-c", command]);
 

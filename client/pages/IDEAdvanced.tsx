@@ -263,6 +263,19 @@ export default function IDEAdvanced() {
 
     try {
       const result = await executeCommand("npm --version");
+
+      if (!result) {
+        // WebContainer not available
+        addTerminalLine({
+          type: "error",
+          content: "WebContainer is not available in this environment. This feature requires cross-origin isolation.",
+          timestamp: new Date(),
+        });
+        toast.error("WebContainer unavailable - This feature requires a specific browser setup. See the terminal for details.");
+        setIsRunning(false);
+        return;
+      }
+
       addTerminalLine({
         type: "output",
         content: result.output,
@@ -276,10 +289,10 @@ export default function IDEAdvanced() {
     } catch (error: any) {
       addTerminalLine({
         type: "error",
-        content: error.message,
+        content: error.message || "WebContainer is not available in this environment.",
         timestamp: new Date(),
       });
-      toast.error("Failed to run project");
+      toast.error("Failed to run project - WebContainer may not be available");
     } finally {
       setIsRunning(false);
     }
