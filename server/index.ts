@@ -42,20 +42,37 @@ const authMiddleware: RequestHandler = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7);
-    const supabase = getSupabase();
 
-    const { data, error } = await supabase.auth.getUser(token);
+    // Check if this is a Supabase JWT token (contains dots) or a demo user ID
+    if (token.includes(".")) {
+      // Looks like a JWT token, try to validate with Supabase
+      try {
+        const supabase = getSupabase();
 
-    if (error || !data.user) {
-      // Token is invalid, continue anyway
-      return next();
+        const { data, error } = await supabase.auth.getUser(token);
+
+        if (error || !data.user) {
+          // Token is invalid, continue anyway
+          return next();
+        }
+
+        // Attach user to request
+        req.user = {
+          id: data.user.id,
+          email: data.user.email,
+        };
+      } catch (error) {
+        // Supabase not configured or token validation failed, continue anyway
+        console.debug("Supabase validation failed:", error);
+        return next();
+      }
+    } else {
+      // Looks like a demo user ID, use it directly
+      req.user = {
+        id: token,
+        email: undefined,
+      };
     }
-
-    // Attach user to request
-    req.user = {
-      id: data.user.id,
-      email: data.user.email,
-    };
 
     next();
   } catch (error) {
