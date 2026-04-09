@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { DeploymentDialog } from "@/components/DeploymentDialog";
+import { AIChat } from "@/components/AIChat";
 import { useAppStore, EditorTab, FileItem, Project } from "@/store/appStore";
 import { generateCode } from "@/lib/openai";
 import { initializeWebContainer, executeCommand, writeFile, createFileStructure } from "@/lib/webcontainer";
@@ -370,7 +371,7 @@ export default function IDEAdvanced() {
       {/* Main editor area */}
       <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
         {/* File Explorer */}
-        <ResizablePanel defaultSize={20} minSize={15} maxSize={40}>
+        <ResizablePanel defaultSize={18} minSize={15} maxSize={30}>
           <FileExplorer
             files={currentProject.files}
             onFileSelect={handleOpenFile}
@@ -381,7 +382,7 @@ export default function IDEAdvanced() {
         <ResizableHandle withHandle />
 
         {/* Editor and Preview */}
-        <ResizablePanel defaultSize={80} minSize={50}>
+        <ResizablePanel defaultSize={52} minSize={40}>
           <div className="flex flex-col h-full">
             {/* Tabs */}
             <div className="border-b border-border bg-card">
@@ -496,6 +497,13 @@ export default function IDEAdvanced() {
               )}
             </div>
           </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        {/* AI Chat */}
+        <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+          <AIChat projectName={currentProject.name} />
         </ResizablePanel>
       </ResizablePanelGroup>
 
