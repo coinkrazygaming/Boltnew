@@ -64,7 +64,10 @@ export async function signInWithGitHub() {
 
 export async function signOut() {
   const client = getSupabase();
-  if (!client) throw new Error("Supabase not configured");
+  if (!client) {
+    // Supabase not configured (demo mode) - just return
+    return;
+  }
 
   const { error } = await client.auth.signOut();
   if (error) throw error;

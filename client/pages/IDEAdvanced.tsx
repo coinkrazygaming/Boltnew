@@ -173,8 +173,10 @@ export default function IDEAdvanced() {
     try {
       await signOut();
     } catch (error) {
-      console.error("Sign out error (expected in demo mode):", error);
+      console.error("Sign out error:", error);
     }
+    // Clear localStorage to ensure demo user is logged out
+    localStorage.removeItem("bolt_auth");
     navigate("/auth");
   };
 
