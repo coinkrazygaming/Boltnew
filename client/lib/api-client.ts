@@ -48,21 +48,34 @@ async function apiRequest<T>(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+    if (!response.ok) {
+      let errorMessage = "Unknown error";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || `HTTP ${response.status}`;
+      } catch {
+        errorMessage = `HTTP ${response.status}`;
+      }
+
+      console.error(`API Error [${response.status}] ${endpoint}:`, errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    if (response.status === 204) {
+      return null as T;
+    }
+
+    return response.json() as Promise<T>;
+  } catch (error) {
+    console.error(`API Request failed for ${endpoint}:`, error);
+    throw error;
   }
-
-  if (response.status === 204) {
-    return null as T;
-  }
-
-  return response.json() as Promise<T>;
 }
 
 // ============ Organization APIs ============

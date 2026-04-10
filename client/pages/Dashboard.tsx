@@ -60,13 +60,27 @@ export default function Dashboard() {
   if (organizations.length === 0) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <h1 className="text-3xl font-bold">Get Started</h1>
-          <p className="text-muted-foreground">Create your first organization to begin</p>
-          <Button onClick={() => setShowCreateOrgDialog(true)} className="gap-2">
+        <div className="text-center space-y-6 max-w-md">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Welcome!</h1>
+            <p className="text-muted-foreground mb-4">Create your first organization to begin</p>
+          </div>
+
+          <Button
+            onClick={() => setShowCreateOrgDialog(true)}
+            className="gap-2 w-full"
+            size="lg"
+          >
             <Plus size={18} />
             Create Organization
           </Button>
+
+          <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+            <p className="text-sm text-muted-foreground">
+              💡 <strong>Tip:</strong> In demo mode, organizations are stored locally. Use the Dashboard to manage your projects.
+            </p>
+          </div>
+
           <CreateOrganizationDialog
             open={showCreateOrgDialog}
             onOpenChange={setShowCreateOrgDialog}
