@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Zap, Github, Mail } from "lucide-react";
+import { Zap, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/appStore";
-import { signUpWithEmail, signInWithEmail, signInWithGitHub, isConfigured, getCurrentUser } from "@/lib/supabase";
+import { signUpWithEmail, signInWithEmail, getAuthToken } from "@/lib/auth";
 import { toast } from "sonner";
 
 type AuthMode = "signin" | "signup";
@@ -24,40 +24,51 @@ export default function Auth() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const user = await getCurrentUser();
-        if (user) {
-          setUserId(user.id);
-          setCurrentUser({
-            id: user.id,
-            email: user.email || "",
-            name: user.user_metadata?.name || user.email?.split("@")[0] || "",
-            avatar_url: user.user_metadata?.avatar_url,
-            github_id: user.user_metadata?.provider_id,
-          });
-          setIsAuthenticated(true);
+        const token = getAuthToken();
+        if (token) {
+          // Parse JWT token to get user ID
+          const parts = token.split(".");
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1]));
+            const userId = payload.userId;
+            const email = payload.email;
 
-          // Store in localStorage
-          localStorage.setItem("bolt_auth", JSON.stringify({
-            userId: user.id,
-            isAuthenticated: true,
-          }));
-
-          // Fetch organizations
-          try {
-            const response = await fetch("/api/organizations", {
-              headers: {
-                Authorization: `Bearer ${user.id}`,
-              },
+            setUserId(userId);
+            setCurrentUser({
+              id: userId,
+              email: email || "",
+              name: email?.split("@")[0] || "",
             });
-            if (response.ok) {
-              const orgs = await response.json();
-              setOrganizations(orgs);
-            }
-          } catch (error) {
-            console.error("Error fetching organizations:", error);
-          }
+            setIsAuthenticated(true);
 
-          navigate("/");
+            // Store in localStorage
+            localStorage.setItem("bolt_auth", JSON.stringify({
+              userId: userId,
+              isAuthenticated: true,
+              user: {
+                id: userId,
+                email: email,
+                name: email?.split("@")[0] || "",
+              },
+            }));
+
+            // Fetch organizations
+            try {
+              const response = await fetch("/api/organizations", {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+              if (response.ok) {
+                const orgs = await response.json();
+                setOrganizations(orgs);
+              }
+            } catch (error) {
+              console.error("Error fetching organizations:", error);
+            }
+
+            navigate("/");
+          }
         }
       } catch (error) {
         console.error("Auth check error:", error);
@@ -72,18 +83,6 @@ export default function Auth() {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isConfigured.supabase) {
-      toast.error("Authentication is not configured. Using demo mode.");
-      setIsAuthenticated(true);
-      setUserId("demo-user");
-      localStorage.setItem("bolt_auth", JSON.stringify({
-        userId: "demo-user",
-        isAuthenticated: true,
-      }));
-      navigate("/ide");
-      return;
-    }
-
     if (mode === "signup" && password !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
@@ -92,64 +91,59 @@ export default function Auth() {
     setIsLoading(true);
     try {
       if (mode === "signup") {
-        await signUpWithEmail(email, password);
-        toast.success("Account created! Check your email for verification.");
-        setMode("signin");
-      } else {
-        const { session } = await signInWithEmail(email, password);
-        if (session?.user.id) {
-          setUserId(session.user.id);
-          setCurrentUser({
-            id: session.user.id,
-            email: session.user.email || "",
-            name: session.user.user_metadata?.name || email.split("@")[0] || "",
-            avatar_url: session.user.user_metadata?.avatar_url,
-          });
-          setIsAuthenticated(true);
+        const response = await signUpWithEmail(email, password);
+        
+        setUserId(response.user.id);
+        setCurrentUser(response.user);
+        setIsAuthenticated(true);
 
-          // Store in localStorage
-          localStorage.setItem("bolt_auth", JSON.stringify({
-            userId: session.user.id,
-            isAuthenticated: true,
-          }));
+        // Store in localStorage
+        localStorage.setItem("bolt_auth", JSON.stringify({
+          userId: response.user.id,
+          isAuthenticated: true,
+          user: response.user,
+        }));
 
-          // Fetch organizations
-          try {
-            const response = await fetch("/api/organizations", {
-              headers: {
-                Authorization: `Bearer ${session.user.id}`,
-              },
-            });
-            if (response.ok) {
-              const orgs = await response.json();
-              setOrganizations(orgs);
-            }
-          } catch (error) {
-            console.error("Error fetching organizations:", error);
-          }
-
-          toast.success("Signed in successfully!");
+        toast.success("Account created! Signing you in...");
+        
+        // Auto sign in with new credentials
+        setTimeout(() => {
           navigate("/");
+        }, 1000);
+      } else {
+        const response = await signInWithEmail(email, password);
+        
+        setUserId(response.user.id);
+        setCurrentUser(response.user);
+        setIsAuthenticated(true);
+
+        // Store in localStorage
+        localStorage.setItem("bolt_auth", JSON.stringify({
+          userId: response.user.id,
+          isAuthenticated: true,
+          user: response.user,
+        }));
+
+        // Fetch organizations
+        try {
+          const orgResponse = await fetch("/api/organizations", {
+            headers: {
+              Authorization: `Bearer ${response.token}`,
+            },
+          });
+          if (orgResponse.ok) {
+            const orgs = await orgResponse.json();
+            setOrganizations(orgs);
+          }
+        } catch (error) {
+          console.error("Error fetching organizations:", error);
         }
+
+        toast.success("Signed in successfully!");
+        navigate("/");
       }
     } catch (error: any) {
       toast.error(error.message || "Authentication failed");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGitHubAuth = async () => {
-    if (!isConfigured.supabase) {
-      toast.error("GitHub authentication is not configured.");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await signInWithGitHub();
-    } catch (error: any) {
-      toast.error(error.message || "GitHub authentication failed");
     } finally {
       setIsLoading(false);
     }
@@ -168,6 +162,11 @@ export default function Auth() {
     localStorage.setItem("bolt_auth", JSON.stringify({
       userId: "demo-user",
       isAuthenticated: true,
+      user: {
+        id: "demo-user",
+        email: "demo@example.com",
+        name: "Demo User",
+      },
     }));
 
     navigate("/");
@@ -233,6 +232,7 @@ export default function Auth() {
                 placeholder="you@example.com"
                 className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent"
                 disabled={isLoading}
+                required
               />
             </div>
 
@@ -245,6 +245,7 @@ export default function Auth() {
                 placeholder="••••••••"
                 className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent"
                 disabled={isLoading}
+                required
               />
             </div>
 
@@ -260,6 +261,7 @@ export default function Auth() {
                   placeholder="••••••••"
                   className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent"
                   disabled={isLoading}
+                  required
                 />
               </div>
             )}
@@ -267,7 +269,7 @@ export default function Auth() {
             <Button
               type="submit"
               className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-              disabled={isLoading}
+              disabled={isLoading || !email || !password}
             >
               {isLoading ? "Loading..." : mode === "signin" ? "Sign In" : "Create Account"}
             </Button>
@@ -279,20 +281,9 @@ export default function Auth() {
               <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-card text-muted-foreground">Or continue with</span>
+              <span className="px-2 bg-card text-muted-foreground">Or</span>
             </div>
           </div>
-
-          {/* Social Auth */}
-          <Button
-            onClick={handleGitHubAuth}
-            variant="outline"
-            className="w-full border-border hover:bg-secondary mb-3"
-            disabled={isLoading || !isConfigured.supabase}
-          >
-            <Github size={18} className="mr-2" />
-            GitHub
-          </Button>
 
           {/* Demo Mode */}
           <Button
@@ -306,14 +297,11 @@ export default function Auth() {
           </Button>
 
           {/* Info */}
-          {!isConfigured.supabase && (
-            <div className="mt-4 p-3 rounded-lg bg-secondary/50 border border-border">
-              <p className="text-xs text-muted-foreground">
-                💡 Authentication is not configured. Click "Continue as Guest" to explore in demo
-                mode.
-              </p>
-            </div>
-          )}
+          <div className="mt-4 p-3 rounded-lg bg-secondary/50 border border-border">
+            <p className="text-xs text-muted-foreground">
+              💡 <strong>Using Neon PostgreSQL:</strong> Sign up with email/password to create an account, or continue as guest to explore demo mode.
+            </p>
+          </div>
         </div>
 
         {/* Footer */}

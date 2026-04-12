@@ -1,44 +1,14 @@
 import { Organization, Workspace, Project } from "@/store/appStore";
+import { getAuthToken } from "./auth";
 
 const API_BASE = "/api";
-
-// Helper function to get auth token
-async function getAuthToken(): Promise<string | null> {
-  try {
-    const { getSupabase } = await import("./supabase");
-    const client = getSupabase();
-    if (!client) {
-      // Supabase not configured, fall back to stored userId (demo mode)
-      const storedAuth = localStorage.getItem("bolt_auth");
-      if (storedAuth) {
-        const { userId } = JSON.parse(storedAuth);
-        return userId || null;
-      }
-      return null;
-    }
-
-    const {
-      data: { session },
-    } = await client.auth.getSession();
-    return session?.access_token || null;
-  } catch (error) {
-    console.error("Error getting auth token:", error);
-    // Fall back to stored userId (demo mode)
-    const storedAuth = localStorage.getItem("bolt_auth");
-    if (storedAuth) {
-      const { userId } = JSON.parse(storedAuth);
-      return userId || null;
-    }
-    return null;
-  }
-}
 
 // Helper function to make authenticated requests
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = await getAuthToken();
+  const token = getAuthToken();
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...options.headers,

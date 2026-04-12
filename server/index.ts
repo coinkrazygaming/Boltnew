@@ -2,6 +2,7 @@ import "dotenv/config";
 import express, { RequestHandler } from "express";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
+import { handleSignUp, handleSignIn, handleCreateAdminUser } from "./routes/auth";
 import {
   getOrganizations,
   getOrganization,
@@ -30,9 +31,9 @@ import {
   getProjectSettings,
   updateProjectSettings,
 } from "./routes/project-settings";
-import { getSupabase, getSupabaseAdmin } from "./lib/supabase-server";
+import { verifyToken } from "./lib/auth";
 
-// Middleware to extract user from auth token
+// Middleware to extract user from JWT token
 const authMiddleware: RequestHandler = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -43,34 +44,13 @@ const authMiddleware: RequestHandler = async (req, res, next) => {
 
     const token = authHeader.substring(7);
 
-    // Check if this is a Supabase JWT token (contains dots) or a demo user ID
-    if (token.includes(".")) {
-      // Looks like a JWT token, try to validate with Supabase
-      try {
-        const supabase = getSupabase();
-
-        const { data, error } = await supabase.auth.getUser(token);
-
-        if (error || !data.user) {
-          // Token is invalid, continue anyway
-          return next();
-        }
-
-        // Attach user to request
-        req.user = {
-          id: data.user.id,
-          email: data.user.email,
-        };
-      } catch (error) {
-        // Supabase not configured or token validation failed, continue anyway
-        console.debug("Supabase validation failed:", error);
-        return next();
-      }
-    } else {
-      // Looks like a demo user ID, use it directly
+    // Verify JWT token
+    const decoded = verifyToken(token);
+    if (decoded) {
+      // Attach user to request
       req.user = {
-        id: token,
-        email: undefined,
+        id: decoded.userId,
+        email: decoded.email,
       };
     }
 
@@ -109,58 +89,10 @@ export function createServer() {
 
   app.get("/api/demo", handleDemo);
 
-  // Admin creation endpoint (temporary)
-  app.post("/api/admin/create-user", async (req, res) => {
-    try {
-      const { email, password } = req.body;
-
-      if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required" });
-      }
-
-      const adminClient = getSupabaseAdmin();
-
-      // Create user with admin client
-      const { data, error } = await adminClient.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-      });
-
-      if (error) {
-        return res.status(400).json({ error: error.message });
-      }
-
-      if (data.user) {
-        // Create a default organization for the admin user
-        const { data: org } = await adminClient
-          .from("organizations")
-          .insert([
-            {
-              name: `${email.split("@")[0]}'s Organization`,
-              slug: `org-${data.user.id.substring(0, 8)}`,
-              owner_id: data.user.id,
-              settings: {},
-            },
-          ])
-          .select()
-          .single();
-
-        return res.status(201).json({
-          user: {
-            id: data.user.id,
-            email: data.user.email,
-          },
-          organization: org,
-        });
-      }
-
-      res.status(201).json(data);
-    } catch (error: any) {
-      console.error("Error creating admin user:", error);
-      res.status(500).json({ error: error.message || "Failed to create user" });
-    }
-  });
+  // Auth routes
+  app.post("/api/auth/signup", handleSignUp);
+  app.post("/api/auth/signin", handleSignIn);
+  app.post("/api/admin/create-user", handleCreateAdminUser);
 
   // Organization routes
   app.get("/api/organizations", getOrganizations);

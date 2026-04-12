@@ -27,7 +27,7 @@ import { AIChat } from "@/components/AIChat";
 import { useAppStore, EditorTab, FileItem, Project } from "@/store/appStore";
 import { generateCode } from "@/lib/openai";
 import { initializeWebContainer, executeCommand, writeFile, createFileStructure } from "@/lib/webcontainer";
-import { signOut } from "@/lib/supabase";
+import { signOut } from "@/lib/auth";
 import { toast } from "sonner";
 
 const DEFAULT_PROJECT: Project = {
